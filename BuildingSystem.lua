@@ -299,16 +299,16 @@ end
 local function snapWallToGrid(position, rotation)
 	local snappedPos
 	if rotation == 0 or rotation == 180 then
-		-- Wall aligned along Z-axis, snap to edge of Z grid
+		-- Wall aligned along Z-axis, snap X to center, Z to edge
 		snappedPos = Vector3.new(
 			math.floor(position.X / GRID_SIZE + 0.5) * GRID_SIZE,
 			position.Y,
-			math.floor(position.Z / GRID_SIZE) * GRID_SIZE
+			math.floor(position.Z / GRID_SIZE) * GRID_SIZE + GRID_SIZE
 		)
 	else
-		-- Wall aligned along X-axis, snap to edge of X grid  
+		-- Wall aligned along X-axis, snap Z to center, X to edge
 		snappedPos = Vector3.new(
-			math.floor(position.X / GRID_SIZE) * GRID_SIZE,
+			math.floor(position.X / GRID_SIZE) * GRID_SIZE + GRID_SIZE,
 			position.Y,
 			math.floor(position.Z / GRID_SIZE + 0.5) * GRID_SIZE
 		)
@@ -364,8 +364,11 @@ local function isValidPlacement(position, size, rotation)
 		-- Create CFrame for the position with rotation
 		local cframe = CFrame.new(position) * CFrame.Angles(0, math.rad(rotation), 0)
 
+		-- Shrink the check size slightly to allow adjacent placement (0.9 scale factor)
+		local checkSize = size * 0.9
+
 		-- Check for overlapping parts
-		local overlappingParts = workspace:GetPartBoundsInBox(cframe, size, overlapParams)
+		local overlappingParts = workspace:GetPartBoundsInBox(cframe, checkSize, overlapParams)
 
 		if #overlappingParts > 0 then
 			return false
