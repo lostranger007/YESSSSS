@@ -297,19 +297,15 @@ local function canAfford(blockType)
 	local blockData = BLOCK_TYPES[blockType]
 	if not blockData then return false end
 
-	-- Get inventory
-	local inventoryGui = player.PlayerGui:FindFirstChild("InventoryGui")
-	if not inventoryGui then return false end
-
-	local inventory = inventoryGui:FindFirstChild("Inventory")
+	-- Get inventory from player (server creates this)
+	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then return false end
 
 	-- Check each resource requirement
 	for resource, amount in pairs(blockData.Cost) do
-		local resourceLabel = inventory:FindFirstChild(resource)
-		if resourceLabel then
-			local currentAmount = tonumber(resourceLabel.Text:match("%d+")) or 0
-			if currentAmount < amount then
+		local resourceValue = inventory:FindFirstChild(resource)
+		if resourceValue and resourceValue:IsA("IntValue") then
+			if resourceValue.Value < amount then
 				return false
 			end
 		else
