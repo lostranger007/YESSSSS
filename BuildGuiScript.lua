@@ -1,8 +1,13 @@
 -- BuildGuiScript.lua
 -- Place this in StarterGui > BuildGui as a LocalScript
 
+print("===== BUILD GUI SCRIPT STARTING =====")
+
 local player = game.Players.LocalPlayer
 local screenGui = script.Parent
+
+print("Player:", player.Name)
+print("ScreenGui:", screenGui)
 
 -- Block types matching BuildingSystem (no spaces, exact keys)
 local blockTypes = {
@@ -124,6 +129,8 @@ for i, blockType in ipairs(blockTypes) do
 	button.Parent = blockSelectorFrame
 
 	button.MouseButton1Click:Connect(function()
+		print("===== BLOCK TYPE BUTTON CLICKED:", blockType, "=====")
+
 		-- Deselect previous
 		if currentSelectedButton then
 			currentSelectedButton.BorderColor3 = Color3.fromRGB(100, 100, 100)
@@ -136,7 +143,12 @@ for i, blockType in ipairs(blockTypes) do
 		currentSelectedButton = button
 
 		-- Change block type (use the actual key, not the display name)
-		_G.ChangeBlockType(blockType)
+		print("Calling _G.ChangeBlockType with:", blockType)
+		if _G.ChangeBlockType then
+			_G.ChangeBlockType(blockType)
+		else
+			warn("_G.ChangeBlockType is nil!")
+		end
 	end)
 end
 
@@ -153,15 +165,33 @@ blockSelectorFrame.CanvasSize = UDim2.new(0, 0, 0, #blockTypes * 55)
 
 -- Toggle functionality
 toggleButton.MouseButton1Click:Connect(function()
+	print("===== BUILD MENU TOGGLE CLICKED =====")
+	print("Current mainPanel.Visible:", mainPanel.Visible)
+	print("_G.SetBuildMode exists:", _G.SetBuildMode ~= nil)
+
 	mainPanel.Visible = not mainPanel.Visible
+	print("New mainPanel.Visible:", mainPanel.Visible)
+
 	if mainPanel.Visible then
 		toggleButton.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
-		_G.SetBuildMode(true)
-		_G.SetDeleteMode(false)
+		print("Calling _G.SetBuildMode(true)")
+		if _G.SetBuildMode then
+			_G.SetBuildMode(true)
+		else
+			warn("_G.SetBuildMode is nil!")
+		end
+		if _G.SetDeleteMode then
+			_G.SetDeleteMode(false)
+		end
 		deleteButton.BackgroundColor3 = Color3.fromRGB(100, 40, 40)
 	else
 		toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-		_G.SetBuildMode(false)
+		print("Calling _G.SetBuildMode(false)")
+		if _G.SetBuildMode then
+			_G.SetBuildMode(false)
+		else
+			warn("_G.SetBuildMode is nil!")
+		end
 	end
 end)
 
@@ -185,9 +215,14 @@ local UserInputService = game:GetService("UserInputService")
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.Escape then
 		if mainPanel.Visible then
+			print("===== ESC PRESSED - CLOSING BUILD MENU =====")
 			mainPanel.Visible = false
 			toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-			_G.SetBuildMode(false)
+			if _G.SetBuildMode then
+				_G.SetBuildMode(false)
+			end
 		end
 	end
 end)
+
+print("===== BUILD GUI SCRIPT FULLY LOADED =====")

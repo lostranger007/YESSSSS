@@ -4,14 +4,38 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+print("===== BUILDING SYSTEM SCRIPT STARTING =====")
+
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 local camera = workspace.CurrentCamera
 
+print("Player:", player.Name)
+print("Waiting for RemoteEvents...")
+
 -- Wait for remote events
-local RemoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
-local PlaceBlockEvent = RemoteEvents:WaitForChild("PlaceBlock")
-local DeleteBlockEvent = RemoteEvents:WaitForChild("DeleteBlock")
+local RemoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents", 10)
+if not RemoteEvents then
+	warn("FAILED TO FIND RemoteEvents!")
+	return
+end
+
+local PlaceBlockEvent = RemoteEvents:WaitForChild("PlaceBlock", 10)
+local DeleteBlockEvent = RemoteEvents:WaitForChild("DeleteBlock", 10)
+
+if not PlaceBlockEvent then
+	warn("FAILED TO FIND PlaceBlock event!")
+	return
+end
+
+if not DeleteBlockEvent then
+	warn("FAILED TO FIND DeleteBlock event!")
+	return
+end
+
+print("Remote events found successfully!")
+print("PlaceBlockEvent:", PlaceBlockEvent)
+print("DeleteBlockEvent:", DeleteBlockEvent)
 
 -- Building configuration
 local GRID_SIZE = 6
@@ -297,19 +321,15 @@ local function canAfford(blockType)
 	local blockData = BLOCK_TYPES[blockType]
 	if not blockData then return false end
 
-	-- Get inventory
-	local inventoryGui = player.PlayerGui:FindFirstChild("InventoryGui")
-	if not inventoryGui then return false end
-
-	local inventory = inventoryGui:FindFirstChild("Inventory")
+	-- Get inventory from player (server creates this)
+	local inventory = player:FindFirstChild("Inventory")
 	if not inventory then return false end
 
 	-- Check each resource requirement
 	for resource, amount in pairs(blockData.Cost) do
-		local resourceLabel = inventory:FindFirstChild(resource)
-		if resourceLabel then
-			local currentAmount = tonumber(resourceLabel.Text:match("%d+")) or 0
-			if currentAmount < amount then
+		local resourceValue = inventory:FindFirstChild(resource)
+		if resourceValue and resourceValue:IsA("IntValue") then
+			if resourceValue.Value < amount then
 				return false
 			end
 		else
@@ -332,15 +352,22 @@ local function isValidPlacement(position, size, rotation)
 	local distance = (humanoidRootPart.Position - position).Magnitude
 	if distance > BUILD_RANGE then return false end
 
-	-- Check for overlapping blocks
-	local region = Region3.new(position - size/2, position + size/2)
-	region = region:ExpandToGrid(4)
+	-- Check for overlapping blocks using GetPartBoundsInBox (newer method)
+	local overlapParams = OverlapParams.new()
+	overlapParams.FilterType = Enum.RaycastFilterType.Include
 
-	local parts = workspace:FindPartsInRegion3(region, nil, 100)
+	-- Only check for collisions with PlayerBuilds folder
+	local playerBuildsFolder = workspace:FindFirstChild("PlayerBuilds")
+	if playerBuildsFolder then
+		overlapParams.FilterDescendantsInstances = {playerBuildsFolder}
 
-	for _, part in ipairs(parts) do
-		-- Allow overlap with terrain blocks but not player builds
-		if part.Parent and part.Parent.Name == "PlayerBuilds" then
+		-- Create CFrame for the position with rotation
+		local cframe = CFrame.new(position) * CFrame.Angles(0, math.rad(rotation), 0)
+
+		-- Check for overlapping parts
+		local overlappingParts = workspace:GetPartBoundsInBox(cframe, size, overlapParams)
+
+		if #overlappingParts > 0 then
 			return false
 		end
 	end
@@ -416,7 +443,17 @@ local function updateGhostBlock()
 	ghostBlock.CFrame = CFrame.new(snappedPos) * rotationCFrame
 
 	-- Check if placement is valid
-	canPlace = isValidPlacement(snappedPos, blockData.Size, currentRotation) and canAfford(currentBlockType)
+	local hasResources = canAfford(currentBlockType)
+	local validPlacement = isValidPlacement(snappedPos, blockData.Size, currentRotation)
+	canPlace = hasResources and validPlacement
+
+	-- Debug output (remove later if needed)
+	if not hasResources then
+		print("Not enough resources for " .. currentBlockType)
+	end
+	if not validPlacement then
+		print("Invalid placement location")
+	end
 
 	-- Update outline color
 	local outline = ghostBlock:FindFirstChildOfClass("SelectionBox")
@@ -431,10 +468,23 @@ end
 
 -- Place block
 local function placeBlock()
-	if not buildMode or not canPlace or not ghostBlock then return end
+	if not buildMode then
+		print("Cannot place: Build mode not enabled")
+		return
+	end
+	if not canPlace then
+		print("Cannot place: Validation failed")
+		return
+	end
+	if not ghostBlock then
+		print("Cannot place: No ghost block")
+		return
+	end
 
 	local position = ghostBlock.Position
 	local rotation = currentRotation
+
+	print("Attempting to place " .. currentBlockType .. " at " .. tostring(position))
 
 	-- Send to server
 	PlaceBlockEvent:FireServer(currentBlockType, position, rotation)
@@ -462,12 +512,21 @@ end
 
 -- Toggle build mode
 function toggleBuildMode()
+	print("===== toggleBuildMode CALLED =====")
 	buildMode = not buildMode
 	deleteMode = false -- Turn off delete mode
 
+	print("buildMode is now:", buildMode)
+
 	if buildMode then
+		print("Creating ghost block...")
 		createGhostBlock()
 		print("Build mode ENABLED")
+		if ghostBlock then
+			print("Ghost block created successfully!")
+		else
+			warn("Ghost block creation FAILED!")
+		end
 	else
 		if ghostBlock then
 			ghostBlock:Destroy()
@@ -578,10 +637,19 @@ end
 
 -- Mouse click
 mouse.Button1Down:Connect(function()
+	print("===== MOUSE CLICKED =====")
+	print("buildMode:", buildMode)
+	print("deleteMode:", deleteMode)
+	print("canPlace:", canPlace)
+
 	if buildMode then
+		print("Calling placeBlock()...")
 		placeBlock()
 	elseif deleteMode then
+		print("Calling deleteBlock()...")
 		deleteBlock()
+	else
+		print("Not in build or delete mode!")
 	end
 end)
 
@@ -609,4 +677,8 @@ _G.SetBuildMode = setBuildMode  -- NEW
 _G.SetDeleteMode = setDeleteMode  -- NEW
 _G.GetDeleteMode = getDeleteMode  -- NEW
 
-print("Building system loaded!")
+print("===== BUILDING SYSTEM FULLY LOADED =====")
+print("Global functions exposed:")
+print("  _G.ToggleBuildMode:", _G.ToggleBuildMode)
+print("  _G.SetBuildMode:", _G.SetBuildMode)
+print("  _G.ChangeBlockType:", _G.ChangeBlockType)
