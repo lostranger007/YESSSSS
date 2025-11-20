@@ -424,9 +424,6 @@ else
 	if terrainExists then
 		print("Terrain already generated, loading existing world...")
 
-		-- Mark as generated so players don't wait
-		terrainGenerated = true
-
 		-- Load which blocks were mined
 		local minedBlocks = _G.LoadMinedBlocks()
 
@@ -514,6 +511,10 @@ else
 		if _G.RestorePlacedBlocks then
 			_G.RestorePlacedBlocks()
 		end
+
+		-- CRITICAL: Mark terrain as generated AFTER everything is loaded
+		terrainGenerated = true
+		print("Terrain marked as ready for player spawning!")
 	else
 		-- First time generation
 		print("First time generation - creating new world...")
