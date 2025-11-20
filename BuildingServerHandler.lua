@@ -318,8 +318,31 @@ end
 
 -- Handle block placement
 PlaceBlockEvent.OnServerEvent:Connect(function(player, blockType, position, rotation)
-	if not BLOCK_TYPES[blockType] then return end
-	if not canAfford(player, blockType) then return end
+	print(player.Name .. " requested to place " .. blockType .. " at " .. tostring(position))
+
+	if not BLOCK_TYPES[blockType] then
+		warn("Invalid block type: " .. tostring(blockType))
+		return
+	end
+
+	if not canAfford(player, blockType) then
+		warn(player.Name .. " cannot afford " .. blockType)
+		-- Debug: show current inventory
+		local inventory = player:FindFirstChild("Inventory")
+		if inventory then
+			print("Current inventory:")
+			for _, resource in ipairs(inventory:GetChildren()) do
+				if resource:IsA("IntValue") then
+					print("  " .. resource.Name .. ": " .. resource.Value)
+				end
+			end
+		else
+			warn("No inventory found!")
+		end
+		return
+	end
+
+	print("Placing " .. blockType .. " for " .. player.Name)
 
 	local blockData = BLOCK_TYPES[blockType]
 
@@ -415,6 +438,12 @@ PlaceBlockEvent.OnServerEvent:Connect(function(player, blockType, position, rota
 
 	-- Deduct resources
 	deductResources(player, blockType)
+
+	-- Update client inventory display
+	local UpdateInventoryEvent = RemoteEvents:FindFirstChild("UpdateInventory")
+	if UpdateInventoryEvent then
+		UpdateInventoryEvent:FireClient(player)
+	end
 
 	print(player.Name .. " placed " .. blockType .. " at " .. tostring(position))
 end)
