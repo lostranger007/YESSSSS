@@ -63,7 +63,7 @@ LoadingProgressEvent.OnClientEvent:Connect(function(progress)
 	if progress >= 100 then
 		task.wait(0.5)
 		statusText.Text = "World ready! Dive in!"
-		task.wait(1)
+		task.wait(2) -- Extended wait to ensure server completes all terrain setup
 
 		-- Fade out animation
 		local fadeInfo = TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
