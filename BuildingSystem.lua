@@ -4,14 +4,38 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+print("===== BUILDING SYSTEM SCRIPT STARTING =====")
+
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 local camera = workspace.CurrentCamera
 
+print("Player:", player.Name)
+print("Waiting for RemoteEvents...")
+
 -- Wait for remote events
-local RemoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
-local PlaceBlockEvent = RemoteEvents:WaitForChild("PlaceBlock")
-local DeleteBlockEvent = RemoteEvents:WaitForChild("DeleteBlock")
+local RemoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents", 10)
+if not RemoteEvents then
+	warn("FAILED TO FIND RemoteEvents!")
+	return
+end
+
+local PlaceBlockEvent = RemoteEvents:WaitForChild("PlaceBlock", 10)
+local DeleteBlockEvent = RemoteEvents:WaitForChild("DeleteBlock", 10)
+
+if not PlaceBlockEvent then
+	warn("FAILED TO FIND PlaceBlock event!")
+	return
+end
+
+if not DeleteBlockEvent then
+	warn("FAILED TO FIND DeleteBlock event!")
+	return
+end
+
+print("Remote events found successfully!")
+print("PlaceBlockEvent:", PlaceBlockEvent)
+print("DeleteBlockEvent:", DeleteBlockEvent)
 
 -- Building configuration
 local GRID_SIZE = 6
@@ -488,12 +512,21 @@ end
 
 -- Toggle build mode
 function toggleBuildMode()
+	print("===== toggleBuildMode CALLED =====")
 	buildMode = not buildMode
 	deleteMode = false -- Turn off delete mode
 
+	print("buildMode is now:", buildMode)
+
 	if buildMode then
+		print("Creating ghost block...")
 		createGhostBlock()
 		print("Build mode ENABLED")
+		if ghostBlock then
+			print("Ghost block created successfully!")
+		else
+			warn("Ghost block creation FAILED!")
+		end
 	else
 		if ghostBlock then
 			ghostBlock:Destroy()
@@ -604,10 +637,19 @@ end
 
 -- Mouse click
 mouse.Button1Down:Connect(function()
+	print("===== MOUSE CLICKED =====")
+	print("buildMode:", buildMode)
+	print("deleteMode:", deleteMode)
+	print("canPlace:", canPlace)
+
 	if buildMode then
+		print("Calling placeBlock()...")
 		placeBlock()
 	elseif deleteMode then
+		print("Calling deleteBlock()...")
 		deleteBlock()
+	else
+		print("Not in build or delete mode!")
 	end
 end)
 
@@ -635,4 +677,8 @@ _G.SetBuildMode = setBuildMode  -- NEW
 _G.SetDeleteMode = setDeleteMode  -- NEW
 _G.GetDeleteMode = getDeleteMode  -- NEW
 
-print("Building system loaded!")
+print("===== BUILDING SYSTEM FULLY LOADED =====")
+print("Global functions exposed:")
+print("  _G.ToggleBuildMode:", _G.ToggleBuildMode)
+print("  _G.SetBuildMode:", _G.SetBuildMode)
+print("  _G.ChangeBlockType:", _G.ChangeBlockType)
